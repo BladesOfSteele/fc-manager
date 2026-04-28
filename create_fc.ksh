@@ -20,7 +20,7 @@
 #
 # Variables
 LPAR=IBMi_PROD
-FC_LPAR_ID=101
+FC_LPAR=PROD-FC
 HMC=hmc
 FLASH=flash
 HMC_USER=fc_manager
@@ -52,10 +52,12 @@ run_ssh() {
 }
 
 # ******* Main script execution ******* 
+
 # find the managed system containing the LPAR
+echo "Finding the managed system containing the LPAR $FC_LPAR..."
 for SYS in $(ssh "$HMC_USER@$HMC" lssyscfg -r sys -F name) ; do 
   for SYSLPAR in $(ssh "$HMC_USER@$HMC" lssyscfg -r lpar -m $SYS -F name) ; do 
-    if [ $SYSLPAR == $LPAR ] ; then 
+    if [ $SYSLPAR == $FC_LPAR ] ; then 
       SYSTEM=$SYS
       break 2
     fi
@@ -64,7 +66,7 @@ done
 
 # Validate the FC LPAR is powered down. This is assuming the backup procedure will shutdown the LPAR at completion.
 echo "Validate the FC LPAR is not powered up."
-FC_STATE=$(ssh "$HMC_USER@$HMC" "lssyscfg -r lpar -m $SYSTEM -F state --filter lpar_ids=$FC_LPAR_ID")
+FC_STATE=$(run_ssh "Validate FC LPAR state" "$HMC_USER@$HMC" "lssyscfg -r lpar -m $SYSTEM -F state --filter lpars_names=$FC_LPAR")
 RC=$?
 if [ "$RC" -ne 0 ]; then
   echo "ERROR: Unable to validate FC LPAR state (exit code $RC)" >&2
@@ -72,7 +74,7 @@ if [ "$RC" -ne 0 ]; then
 fi
 
 if [ "$FC_STATE" != "Not Activated" ]; then
-  echo "ERROR: The FC LPAR at ID $FC_LPAR_ID is not in the Not Activated state. Exiting!"
+  echo "ERROR: The FC LPAR $FC_LPAR is in an activated state. Needs to be Not Activated! Exiting" >&2
   exit -1
 fi
 
@@ -105,7 +107,7 @@ run_ssh "Delete snapshot" "$FLASH_USER@$FLASH" "svctask rmsnapshot -gui -volumeg
 # so it will boot with the new FC volumes from the thin clone.
 echo "\nBoot the target host."
 # ssh fc_manager@hmc "chsysstate -r lpar -m \`lssyscfg -r sys -F name\` -o on --id 101"
-run_ssh "Boot target host" "$HMC_USER@$HMC" "chsysstate -r lpar -m $SYSTEM -o on --id $FC_LPAR_ID"
+run_ssh "Boot target host" "$HMC_USER@$HMC" "chsysstate -r lpar -m $SYSTEM -o on -n $FC_LPAR"
 
 # Successfully completed all steps
 echo "\nSuccessfully completed all steps. The FC LPAR should now be booting with the new FC volumes from the thin clone."
