@@ -19,15 +19,16 @@
 #       Written by: Mark Steele/dss
 #
 # Variables
+LPAR=IBMi_PROD
 FC_LPAR_ID=101
 HMC=hmc
 FLASH=flash
 HMC_USER=fc_manager
 FLASH_USER=msteele
-PROD_VG=IBMi_PROD
-PROD_FC_VG=IBMi_PROD_FC
-SNAPSHOT_NAME=prod_snapshot_$(date +%Y%m%d%H%M%S)
-DRY_RUN=0 # Set to 1 for dry run, 0 for actual execution
+PROD_VG=$LPAR
+PROD_FC_VG=${LPAR}_FC
+SNAPSHOT_NAME=${LPAR}_snapshot_$(date +%Y%m%d%H%M%S)
+DRY_RUN=1 # Set to 1 for dry run, 0 for actual execution
 
 # Function to run SSH commands with error handling
 run_ssh() {
@@ -51,9 +52,19 @@ run_ssh() {
 }
 
 # ******* Main script execution ******* 
+# find the managed system containing the LPAR
+for SYS in $(ssh "$HMC_USER@$HMC" lssyscfg -r sys -F name) ; do 
+  for SYSLPAR in $(ssh "$HMC_USER@$HMC" lssyscfg -r lpar -m $SYS -F name) ; do 
+    if [ $SYSLPAR == $LPAR ] ; then 
+      SYSTEM=$SYS
+      break 2
+    fi
+  done
+done
+
 # Validate the FC LPAR is powered down. This is assuming the backup procedure will shutdown the LPAR at completion.
 echo "Validate the FC LPAR is not powered up."
-FC_STATE=$(ssh "$HMC_USER@$HMC" "lssyscfg -r lpar -m \`lssyscfg -r sys -F name\` -F state --filter lpar_ids=$FC_LPAR_ID")
+FC_STATE=$(ssh "$HMC_USER@$HMC" "lssyscfg -r lpar -m $SYSTEM -F state --filter lpar_ids=$FC_LPAR_ID")
 RC=$?
 if [ "$RC" -ne 0 ]; then
   echo "ERROR: Unable to validate FC LPAR state (exit code $RC)" >&2
@@ -94,7 +105,7 @@ run_ssh "Delete snapshot" "$FLASH_USER@$FLASH" "svctask rmsnapshot -gui -volumeg
 # so it will boot with the new FC volumes from the thin clone.
 echo "\nBoot the target host."
 # ssh fc_manager@hmc "chsysstate -r lpar -m \`lssyscfg -r sys -F name\` -o on --id 101"
-run_ssh "Boot target host" "$HMC_USER@$HMC" "chsysstate -r lpar -m \`lssyscfg -r sys -F name\` -o on --id $FC_LPAR_ID"
+run_ssh "Boot target host" "$HMC_USER@$HMC" "chsysstate -r lpar -m $SYSTEM -o on --id $FC_LPAR_ID"
 
 # Successfully completed all steps
 echo "\nSuccessfully completed all steps. The FC LPAR should now be booting with the new FC volumes from the thin clone."
