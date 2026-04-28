@@ -66,7 +66,7 @@ done
 
 # Validate the FC LPAR is powered down. This is assuming the backup procedure will shutdown the LPAR at completion.
 echo "Validate the FC LPAR is not powered up."
-FC_STATE=$(run_ssh "Validate FC LPAR state" "$HMC_USER@$HMC" "lssyscfg -r lpar -m $SYSTEM -F state --filter lpars_names=$FC_LPAR")
+FC_STATE=$(ssh "$HMC_USER@$HMC" "lssyscfg -r lpar -m $SYSTEM -F state --filter lpars_names=$FC_LPAR")
 RC=$?
 if [ "$RC" -ne 0 ]; then
   echo "ERROR: Unable to validate FC LPAR state (exit code $RC)" >&2
