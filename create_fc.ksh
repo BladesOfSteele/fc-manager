@@ -28,7 +28,7 @@ FLASH_USER=msteele
 PROD_VG=$LPAR
 PROD_FC_VG=${LPAR}_FC
 SNAPSHOT_NAME=${LPAR}_snapshot_$(date +%Y%m%d%H%M%S)
-DRY_RUN=1 # Set to 1 for dry run, 0 for actual execution
+DRY_RUN=0  Set to 1 for dry run, 0 for actual execution
 
 # Function to run SSH commands with error handling
 run_ssh() {
