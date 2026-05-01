@@ -12,7 +12,7 @@
 #               6. Mount thin clone volumes to target host.
 #               7. Boot target host.
 #       Variable:
-#               1.  LPAR source ID
+#               1. LPAR source ID
 #               2. LPAR target ID
 #               3. Snapshot name
 #
@@ -20,7 +20,7 @@
 #
 # Variables
 LPAR=IBMi_PROD
-FC_LPAR=PROD-FC
+FC_LPAR=${LPAR}_FC
 HMC=hmc
 FLASH=flash
 HMC_USER=fc_manager
