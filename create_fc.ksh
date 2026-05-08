@@ -17,6 +17,7 @@
 #               3. Snapshot name
 #
 #       Written by: Mark Steele/dss
+#         https://github.com/BladesOfSteele/fc-manager
 #
 # Variables
 LPAR=IBMi_PROD

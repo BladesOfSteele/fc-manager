@@ -6,7 +6,13 @@
 #	where <LPAR_NAME> is the LPAR to move the tape adapter to.
 #
 #
-#lshwres -r io -m Server-9009-41A-SN7817760 --rsubtype slot -F lpar_name,phys_loc,description --filter "slots=2102001B"
+#  lshwres -r io -m Server-9009-41A-SN7817760 --rsubtype slot -F lpar_name,phys_loc,description --filter "slots=2102001B"
+#  IBMi_PROD,C6,"SAS RAID Controller, PCIe3 x8, Quad-port 6Gb"
+#
+# Written by: Mark Steele/dss
+#	https://github.com/BladesOfSteele/fc-manager
+#
+# Variables
 PROGNAME=${0##*/}
 SYSTEM=Server-9009-41A-SN7817760
 LPAR=$1
