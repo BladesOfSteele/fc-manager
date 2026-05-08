@@ -28,5 +28,9 @@ echo "Tape attached to $CURRENT_LPAR"
 [[ $(ssh $HMC_USER@HMC lssyscfg -r lpar -m $SYSTEM --filter "lpar_names=$LPAR" -F name 2>/dev/null ) = $LPAR ]] || die "$LPAR Does not exist on $SYSTEM"
 
 echo "Moving drive to $LPAR"
-chhwres -r io -m $SYSTEM -o m -p $CURRENT_OWNER -t $LPAR -l $SLOT
+ssh $HMC_USER@HMC chhwres -r io -m $SYSTEM -o m -p $CURRENT_LPAR -t $LPAR -l $SLOT
+rc=$?
+if [[ $rc -ne 0 ]] ; then
+	die "Moving tape drive from $CURRENT_LPAR to $LPAR failed (rc=$rc)" 
+fi
 
