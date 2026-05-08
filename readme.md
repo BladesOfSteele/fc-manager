@@ -1,72 +1,94 @@
-# create_fc.ksh
+# FC Manager Scripts
 
-Prepares an IBM i Flash Copy (FC) LPAR with a fresh copy of the production environment for backup purposes.
+This repository contains operational Korn shell scripts used to manage IBM i FC refresh workflows and tape adapter movement.
 
-## What It Does
+## create_fc.ksh
 
-The script automates the following sequence:
+Prepares an IBM i Flash Copy (FC) LPAR with a fresh copy of production volumes for backup processing.
 
-1. **Validates the FC LPAR is powered off** — queries the HMC via SSH and aborts if the target LPAR is not in the `Not Activated` state.
-2. **Creates a production snapshot** — takes a dated snapshot of the production volume group (`IBMi_PROD`) on the IBM FlashSystem with a 3-day auto-retention.
-3. **Refreshes the thin clone** — updates the FC volume group (`IBMi_PROD_FC`) from the new snapshot. The thin clone volumes are already mapped to the FC LPAR.
-4. **Waits 60 seconds** — allows the thin clone refresh to complete.
-5. **Deletes the snapshot** — flags the snapshot for deletion. It will not be removed while the thin clone still depends on it, but will be cleaned up automatically once no longer needed.
-6. **Boots the FC LPAR** — instructs the HMC to power on the FC LPAR, which will start with the refreshed thin clone volumes.
+### What it does
 
-All SSH steps are error-checked. If any step fails, the script prints an error message with the exit code and stops immediately.
+1. Finds the managed system that contains the FC LPAR.
+2. Validates the FC LPAR is in `Not Activated` state.
+3. Creates a timestamped snapshot of the production volume group.
+4. Refreshes the FC thin-clone volume group from that snapshot.
+5. Waits 60 seconds.
+6. Marks the snapshot for deletion.
+7. Boots the FC LPAR.
 
-## Prerequisites
+All key SSH operations are checked for non-zero return codes and the script exits on failure.
 
-- SSH key-based authentication configured for:
-  - `fc_manager@hmc` (HMC)
-  - `msteele@flash` (IBM FlashSystem)
-- The FC LPAR thin clone volume group (`IBMi_PROD_FC`) and volume-to-LPAR mappings must already exist.
-- The FC LPAR must be fully powered off before running the script (the prior backup procedure is expected to shut it down).
-- The FlashSystem volume protection timer must have expired after the LPAR was shut down (default: 15 minutes). Running too early will result in a `CMMVC1035E` error.
+### Configuration
 
-## Configuration
+Edit variables at the top of the script as needed:
 
-Edit the variables at the top of the script before running:
+| Variable | Default | Description |
+|---|---|---|
+| `LPAR` | `IBMi_PROD` | Production LPAR base name |
+| `FC_LPAR` | `${LPAR}_FC` | FC target LPAR name |
+| `HMC` | `hmc` | HMC host |
+| `FLASH` | `flash` | FlashSystem host |
+| `HMC_USER` | `fc_manager` | HMC SSH user |
+| `FLASH_USER` | `msteele` | FlashSystem SSH user |
+| `PROD_VG` | `$LPAR` | Production volume group |
+| `PROD_FC_VG` | `${LPAR}_FC` | FC thin-clone volume group |
+| `DRY_RUN` | `0` | Set to `1` to print commands only |
 
-| Variable        | Default                          | Description                              |
-|-----------------|----------------------------------|------------------------------------------|
-| `FC_LPAR_ID`    | `101`                            | LPAR ID of the FC target on the HMC      |
-| `HMC`           | `hmc`                            | Hostname of the HMC                      |
-| `FLASH`         | `flash`                          | Hostname of the IBM FlashSystem          |
-| `HMC_USER`      | `fc_manager`                     | SSH user for the HMC                     |
-| `FLASH_USER`    | `msteele`                        | SSH user for the FlashSystem             |
-| `PROD_VG`       | `IBMi_PROD`                      | Source production volume group           |
-| `PROD_FC_VG`    | `IBMi_PROD_FC`                   | Target FC thin clone volume group        |
-| `DRY_RUN`       | `0`                              | Set to `1` to print commands without executing |
-
-## Running the Script
+### Usage
 
 ```sh
 ./create_fc.ksh
 ```
 
-To do a dry run (prints all SSH commands without executing them):
+Dry run:
 
 ```sh
 DRY_RUN=1 ./create_fc.ksh
 ```
 
-The script requires execute permission. To set it:
+### Prerequisites
+
+- SSH access configured for `fc_manager@hmc` and `msteele@flash`.
+- FC thin-clone volume group and mappings already exist.
+- FC LPAR must be powered off before execution.
+- FlashSystem volume protection timer must be expired to avoid `CMMVC1035E` during refresh.
+
+## move_tape.ksh
+
+Moves a tape adapter slot from its currently assigned LPAR to a target LPAR.
+
+### What it does
+
+1. Reads the current LPAR assignment for a configured physical slot.
+2. Validates the target LPAR exists on the configured managed system.
+3. Executes `chhwres` to move the slot from the current LPAR to the target LPAR.
+
+### Configuration
+
+Edit script variables if your environment differs:
+
+| Variable | Default | Description |
+|---|---|---|
+| `SYSTEM` | `Server-9009-41A-SN7817760` | Managed system name |
+| `SLOT` | `2102001B` | Physical slot ID for the tape adapter |
+| `HMC` | `hmc` | HMC host |
+| `HMC_USER` | `fc_manager` | HMC SSH user |
+
+### Usage
 
 ```sh
-chmod u+x create_fc.ksh
+./move_tape.ksh <LPAR_NAME>
 ```
 
-## Error Handling
+Example:
 
-If any SSH command fails, the script outputs:
-
-```
-ERROR: <step name> failed (exit code <rc>)
+```sh
+./move_tape.ksh IBMi_PROD_FC
 ```
 
-and exits immediately with that exit code. Check SSH connectivity, remote command availability, and FlashSystem volume protection timer status when troubleshooting.
+The script exits with an error if the target LPAR does not exist or if the move operation fails.
 
-## Author
+## Notes
 
-Mark Steele / dss
+- Both scripts are intended for operators with appropriate HMC/Flash permissions.
+- Test in a non-production or DRY_RUN scenario before operational use.
