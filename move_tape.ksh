@@ -24,6 +24,12 @@ function die
 CURRENT_LPAR=$(ssh "$HMC_USER@$HMC" lshwres -r io -m $SYSTEM --rsubtype slot -F lpar_name --filter "slots=$SLOT")
 echo "Tape attached to $CURRENT_LPAR"
 
+# Exit if source and target LPAR are the same
+if [[ $CURRENT_LPAR = $LPAR ]] ; then
+	echo "Tape adapter is already assigned to $LPAR"
+	exit 0
+fi
+
 # Validate target LPAR exists
 [[ $(ssh $HMC_USER@HMC lssyscfg -r lpar -m $SYSTEM --filter "lpar_names=$LPAR" -F name 2>/dev/null ) = $LPAR ]] || die "$LPAR Does not exist on $SYSTEM"
 
